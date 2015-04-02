@@ -2,6 +2,7 @@ package com.bedatadriven.appengine.cloudsql;
 
 
 import org.hibernate.annotations.QueryHints;
+import org.hibernate.ejb.HibernateEntityManager;
 
 import javax.persistence.*;
 import javax.servlet.http.HttpServletRequest;
@@ -21,17 +22,6 @@ public class TestResources {
     
     private static final Logger LOGGER = Logger.getLogger(TestResources.class.getName());
     
-    @POST
-    @Path("reset")
-    public Response resetDatabase() {
-
-        EntityManager em = Hibernate.createEntityManager();
-        em.getTransaction().begin();
-        em.createNativeQuery("delete from greeting").executeUpdate();
-        em.createNativeQuery("delete from author").executeUpdate();
-        em.getTransaction().commit();
-        return Response.ok().build();
-    }
     
     @GET
     @Path("exception")

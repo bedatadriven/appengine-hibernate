@@ -26,7 +26,6 @@ public class LoadIT {
         Metrics.start();
         ErrorLog.open();
         
-        resetDatabase();
         warmUp();
         exceptionTest();
         writeTest();
@@ -34,19 +33,6 @@ public class LoadIT {
         
         Metrics.stop();
     }
-
-    public void resetDatabase() {
-
-        ConsoleStatus.start("Resetting database");
-
-        Response response = root.path("reset").request().post(Entity.entity("", MediaType.APPLICATION_FORM_URLENCODED_TYPE));
-        if(response.getStatus() != 200) {
-            throw new AssertionError("Could not reset database: " + response.getStatusInfo());
-        }
-
-        ConsoleStatus.finish();
-    }
-    
     
     public void warmUp() {
         ConsoleStatus.start("Warm up");
