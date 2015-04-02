@@ -1,8 +1,9 @@
-# Appengine MySQL
+# AppEngine Hibernate
 
-## CloudSQL Hibernate
-
-Specialized ConnectionProvider which limits query running to avoid exceeding the request time limit and 
-sinking the whole VM, leading to a death spiral as AppEngine tries to bring up replacement instances.
+A library of components to support Hibernate on AppEngine at scale.
 
 
+## CloudSqlConnectionProvider
+
+This `org.hibernate.service.jdbc.connections.spi.ConnectionProvider` aims to solve several problems 
+encountered 

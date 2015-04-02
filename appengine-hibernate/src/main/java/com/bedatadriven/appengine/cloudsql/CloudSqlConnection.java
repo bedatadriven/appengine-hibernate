@@ -22,10 +22,33 @@ public class CloudSqlConnection implements Connection {
     private boolean closed = false;
     
     private final Logger LOGGER = Logger.getLogger(CloudSqlConnection.class.getName());
-    
+
+
+    /**
+     * MySQL connection id that can be used to kill this thread later
+     */
+    private int connectionId;
+
     public CloudSqlConnection(Connection conn) {
         this.delegate = conn;
         this.executor = new QueryExecutor();
+    }
+
+    public void initConnectionId() throws SQLException {
+
+        try(Statement statement = delegate.createStatement()) {
+            try (ResultSet resultSet = statement.executeQuery("SELECT connection_id()")) {
+                if (!resultSet.next()) {
+                    throw new RuntimeException("SELECT connection_id() failed.");
+                }
+                this.connectionId = resultSet.getInt(1);
+                LOGGER.fine("Connection ID = " + connectionId);
+            }
+        }
+    }
+
+    public int getConnectionId() {
+        return connectionId;
     }
 
     private Statement wrap(Statement statement) {
@@ -409,24 +432,12 @@ public class CloudSqlConnection implements Connection {
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
         return delegate.isWrapperFor(iface);
     }
+    
+    public boolean timedOut() {
+        return executor.timedOut();
+    }
 
-    public void cleanup() {
-        if(executor.timedOut()) {
-            // don't risk delaying if 
-            executor.shutdown();
-            
-            LOGGER.severe("There were query timeouts, not attempting to close connection.");
-        
-        } else {
-            try {
-                if (!isClosed()) {
-                    close();
-                }
-            } catch (Exception e) {
-                LOGGER.severe("Failed to close connection");
-
-            }
-        }
-        
+    public void shutdownExecutor() {
+        executor.shutdown();
     }
 }

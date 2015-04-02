@@ -3,11 +3,20 @@
   <application>ai-capacity-test</application>
   <module>hibernate</module>
   <version>1</version>
-  <threadsafe>true</threadsafe>
   <use-google-connector-j>true</use-google-connector-j>
 
   <system-properties>
     <property name="java.util.logging.config.file" value="WEB-INF/logging.properties"/>
     <property name="cloudsql.url" value="jdbc:google:mysql://ai-capacity-test:activityinfo/hibernate?user=root"/>
   </system-properties>
+
+  <threadsafe>true</threadsafe>
+  <automatic-scaling>
+    <min-idle-instances>0</min-idle-instances>
+    <max-idle-instances>automatic</max-idle-instances>
+    <!-- ‘automatic’ is the default value. -->
+    <min-pending-latency>automatic</min-pending-latency>
+    <!--<max-pending-latency>30ms</max-pending-latency>-->
+    <max-concurrent-requests>10</max-concurrent-requests>
+  </automatic-scaling>
 </appengine-web-app>

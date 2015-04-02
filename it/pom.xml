@@ -3,13 +3,13 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
-    <artifactId>appengine-mysql-parent</artifactId>
+    <artifactId>appengine-hibernate-parent</artifactId>
     <groupId>com.bedatadriven.appengine</groupId>
-    <version>0.2-SNAPSHOT</version>
+    <version>0.4-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>appengine-mysql-it</artifactId>
+  <artifactId>appengine-hibernate-it</artifactId>
   <name>AppEngine CloudSQL Integration Test</name>
   <packaging>war</packaging>
   
@@ -31,20 +31,14 @@
       <version>15.0</version>
     </dependency>
     <dependency>
-      <groupId>com.sun.jersey</groupId>
+      <groupId>org.glassfish.jersey.core</groupId>
       <artifactId>jersey-client</artifactId>
-      <version>1.17</version>
-    </dependency>
-    <dependency>
-      <groupId>org.glassfish.jersey.ext</groupId>
-      <artifactId>jersey-servlet-portability</artifactId>
       <version>2.17</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-math3</artifactId>
-      <version>3.2</version>
-      <scope>test</scope>
+      <groupId>org.glassfish.jersey.containers</groupId>
+      <artifactId>jersey-container-servlet-core</artifactId>
+      <version>2.17</version>
     </dependency>
     <dependency>
       <groupId>io.dropwizard</groupId>
@@ -62,7 +56,6 @@
         <groupId>com.google.appengine</groupId>
         <artifactId>appengine-maven-plugin</artifactId>
         <version>${appengine.target.version}</version>
-        
         <executions>
           <execution>
             <goals>

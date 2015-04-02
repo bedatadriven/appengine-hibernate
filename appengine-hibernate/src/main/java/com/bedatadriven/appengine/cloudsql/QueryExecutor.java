@@ -108,6 +108,7 @@ public class QueryExecutor {
     public void shutdown() {
         if(executorService != null) {
             executorService.shutdownNow();
+            executorService = null;
         }
     }
 }

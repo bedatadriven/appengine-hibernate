@@ -1,14 +1,19 @@
 package com.bedatadriven.appengine.cloudsql;
 
+import sun.rmi.runtime.Log;
+
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.sql.Statement;
 import java.util.concurrent.Callable;
+import java.util.logging.Logger;
 
 /**
  * Proxy for {@code Statement}s and {@code PreparedStatement}s
  */
 public class StatementProxy implements InvocationHandler {
+    
+    private static final Logger LOGGER = Logger.getLogger(StatementProxy.class.getName());
     
     private final QueryExecutor executor;
     private final Statement delegate;
@@ -29,6 +34,7 @@ public class StatementProxy implements InvocationHandler {
 
                 @Override
                 public Object call() throws Exception {
+                    LOGGER.fine("Invoking " + method.getName() + "()");
                     return method.invoke(delegate, args);
                 }
             });

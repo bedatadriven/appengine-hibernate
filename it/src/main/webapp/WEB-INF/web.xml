@@ -13,18 +13,17 @@
     <url-pattern>/*</url-pattern>
   </filter-mapping>
 
-
   <servlet>
-    <servlet-name>TestServlet</servlet-name>
-    <servlet-class>com.bedatadriven.appengine.cloudsql.TestServlet</servlet-class>
+    <servlet-name>TestApplication</servlet-name>
+    <servlet-class>org.glassfish.jersey.servlet.ServletContainer</servlet-class>
+    <init-param>
+      <param-name>javax.ws.rs.Application</param-name>
+      <param-value>com.bedatadriven.appengine.cloudsql.TestApplication</param-value>
+    </init-param>
   </servlet>
-
+  
   <servlet-mapping>
-    <servlet-name>TestServlet</servlet-name>
-    <url-pattern>/test</url-pattern>
+    <servlet-name>TestApplication</servlet-name>
+    <url-pattern>/*</url-pattern>
   </servlet-mapping>
-
-  <welcome-file-list>
-    <welcome-file>index.html</welcome-file>
-  </welcome-file-list>
 </web-app>

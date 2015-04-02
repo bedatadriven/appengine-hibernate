@@ -5,8 +5,8 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.bedatadriven.appengine</groupId>
-  <artifactId>appengine-mysql-parent</artifactId>
-  <version>0.2-SNAPSHOT</version>
+  <artifactId>appengine-hibernate-parent</artifactId>
+  <version>0.4-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <properties>

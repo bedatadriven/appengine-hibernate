@@ -24,6 +24,9 @@ public class CloudSqlFilter implements Filter {
 
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
+        
+        LOGGER.fine("Starting...");
+        
         try {
             filterChain.doFilter(servletRequest, servletResponse);
 
@@ -37,7 +40,7 @@ public class CloudSqlFilter implements Filter {
             throw e;
             
         } finally {
-            CloudSqlConnectionProvider.cleanupRequest();
+            ConnectionPool.INSTANCE.cleanupRequest();
         }
     }
     
