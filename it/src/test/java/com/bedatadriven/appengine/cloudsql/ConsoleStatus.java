@@ -2,6 +2,7 @@ package com.bedatadriven.appengine.cloudsql;
 
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
+import com.google.common.base.Strings;
 
 import java.io.Console;
 import java.io.PrintStream;
@@ -25,13 +26,22 @@ public class ConsoleStatus {
     }
     
     public static void updateProgress(String progress) {
-        out.print("\r");
+        if (isConsole()) {
+            out.print("\r");
+        } else {
+            out.print("\n");
+        }
         out.print(currentTask);
         out.print(": ");
         out.print(progress);
         out.flush();
     }
- 
+
+    private static boolean isConsole() {
+        // don't try any fancy console stuff in we're in jenkins
+        return Strings.isNullOrEmpty(System.getenv("BUILD_NUMBER"));
+    }
+
     public static void finish(String message) {
         out.print("\r");
         out.print(currentTask);

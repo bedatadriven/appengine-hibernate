@@ -2,6 +2,10 @@
 
 A library of components to support Hibernate on AppEngine at scale.
 
+## Usage
+
+Include the appengine-hibernate 
+
 
 ## 
 
