@@ -16,7 +16,7 @@ public class TimingInterceptor extends EmptyInterceptor {
 
     @Override
     public void afterTransactionBegin(Transaction tx) {
-        RequestStats.current().getTransactionStopwatch().start();
+        RequestStats.current().getTransactionStopwatch().reset().start();
     }
 
     @Override
