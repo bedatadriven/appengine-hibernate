@@ -21,8 +21,7 @@ public class SlowQuery implements Runnable {
                     .get();
 
             if (response.getStatus() != 200 && response.getStatus() != 503) {
-                System.out.println("Slow query brought VM down.");
-                System.exit(-1);
+                RequestSubmitter.FAILURES.inc();
             }
             try {
                 Thread.sleep(200);
