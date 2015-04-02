@@ -54,6 +54,7 @@ public class CloudSqlFilter implements Filter {
 
     @Override
     public void destroy() {
-
+        LOGGER.info("Stopping connection pool");
+        CloudSqlConnectionPool.INSTANCE.stop();
     }
 }

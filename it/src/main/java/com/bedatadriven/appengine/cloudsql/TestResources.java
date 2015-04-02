@@ -120,7 +120,7 @@ public class TestResources {
     }
     
     @GET
-    @Path("stats")
+    @Path("numConnections")
     public String queryStats(@Context HttpServletRequest req) {
         Enumeration headerNames = req.getHeaderNames();
         while(headerNames.hasMoreElements()) {

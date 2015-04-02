@@ -1,6 +1,7 @@
 package com.bedatadriven.appengine.cloudsql;
 
 
+import com.google.appengine.api.LifecycleManager;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import org.hibernate.HibernateException;
@@ -8,6 +9,7 @@ import org.hibernate.HibernateException;
 import java.sql.SQLException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,6 +35,8 @@ public class CloudSqlConnectionPool {
     private final ConcurrentLinkedQueue<IdlingConnection> idle = new ConcurrentLinkedQueue<>();
     
     private final AtomicInteger openConnections = new AtomicInteger(0);
+    
+    private final AtomicBoolean shutdownHookRegistered = new AtomicBoolean(false);
 
     /**
      * Ensure that a single connection is allocated per request.
@@ -111,6 +115,19 @@ public class CloudSqlConnectionPool {
         } else {
             connection.shutdownExecutor();
             idle.add(new IdlingConnection(connection));
+            ensureShutdownHookRegistered();
+        }
+    }
+
+    private void ensureShutdownHookRegistered() {
+        if(shutdownHookRegistered.compareAndSet(false, true)) {
+            LifecycleManager.getInstance().setShutdownHook(new LifecycleManager.ShutdownHook() {
+                @Override
+                public void shutdown() {
+                    LOGGER.severe("Shutting down: closing all idle connections...");
+                    stop();
+                }
+            });
         }
     }
 

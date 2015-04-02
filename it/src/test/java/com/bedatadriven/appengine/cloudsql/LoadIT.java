@@ -1,5 +1,6 @@
 package com.bedatadriven.appengine.cloudsql;
 
+import com.google.common.base.Stopwatch;
 import org.joda.time.Period;
 
 import javax.ws.rs.client.ClientBuilder;
@@ -31,6 +32,8 @@ public class LoadIT {
         writeTest();
         slowQueryTest();
         
+        connectionCleanupTest();
+        
         Metrics.stop();
     }
     
@@ -45,6 +48,7 @@ public class LoadIT {
         ConsoleStatus.finish();
     }
     
+    
     public void exceptionTest() {
         ConsoleStatus.start("Exception reporting");
         
@@ -57,14 +61,20 @@ public class LoadIT {
         }
     }
 
-    
+    /**
+     * Ensure that simple write requests are able to scale up to 300 concurrent requests without
+     * encountering errors.
+     */
     private void writeTest() throws InterruptedException {
         LoadTester tester = new LoadTester("Write Test");
         tester.add(new WriteRequest(root), LogisticGrowthFunction.rampUpTo(300).during(Period.minutes(4)));
         tester.run(10, TimeUnit.MINUTES);
         tester.stop();
     }
-    
+
+    /**
+     * Ensure that a few "toxic" queries don't lead to cycle of instance shutdowns and restarts
+     */
     private void slowQueryTest() throws InterruptedException {
         LoadTester tester = new LoadTester("Slow Query Test");
         tester.add(new WriteRequest(root), LogisticGrowthFunction.rampUpTo(400).during(Period.minutes(4)));
@@ -74,6 +84,32 @@ public class LoadIT {
         }
         tester.run(6, TimeUnit.MINUTES);
         tester.stop();
+    }
+
+    /**
+     * Ensure that once a spike in activity drops that connections are freed
+     */
+    private void connectionCleanupTest() throws InterruptedException {
+        int numConnections = -1;
+        ConsoleStatus.start("Connection cleanup test");
+        Stopwatch stopwatch = Stopwatch.createStarted();
+        while(stopwatch.elapsed(TimeUnit.MINUTES) < 5) {
+            Thread.sleep(TimeUnit.SECONDS.toMillis(15));
+            try {
+                numConnections = Integer.parseInt(root.path("numConnections").request().get(String.class));
+            } catch (Exception ignored) {
+            }
+
+            ConsoleStatus.updateProgress()
+                .stat("Open Connections: %d", numConnections)
+                .stat("Time Remaining: %d s", (TimeUnit.MINUTES.toSeconds(5) - stopwatch.elapsed(TimeUnit.SECONDS)));
+        }
+        
+        if(numConnections < 5) {
+            ConsoleStatus.finish("OK: " + numConnections + " remain open.");
+        } else {
+            ConsoleStatus.finish("FAIL: " + numConnections + " remain open.");
+        }
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {

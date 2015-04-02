@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 
@@ -27,21 +28,27 @@ public class Hibernate {
         
         LOGGER.info("Creating EntityManagerFactory...");
         
-        Map<String, String> properties = new HashMap<>();
-        properties.putAll(extraProperties);
+        try {
 
-        
-        if (SystemProperty.environment.value() == SystemProperty.Environment.Value.Production) {
-            properties.put("javax.persistence.jdbc.driver", "com.mysql.jdbc.GoogleDriver");
-            properties.put("javax.persistence.jdbc.url", System.getProperty("cloudsql.url"));
-        } else {
-            properties.put("javax.persistence.jdbc.driver", "com.mysql.jdbc.Driver");
-            properties.put("javax.persistence.jdbc.url", System.getProperty("cloudsql.url.dev"));
+            Map<String, String> properties = new HashMap<>();
+            properties.putAll(extraProperties);
+
+
+            if (SystemProperty.environment.value() == SystemProperty.Environment.Value.Production) {
+                properties.put("javax.persistence.jdbc.driver", "com.mysql.jdbc.GoogleDriver");
+                properties.put("javax.persistence.jdbc.url", System.getProperty("cloudsql.url"));
+            } else {
+                properties.put("javax.persistence.jdbc.driver", "com.mysql.jdbc.Driver");
+                properties.put("javax.persistence.jdbc.url", System.getProperty("cloudsql.url.dev"));
+            }
+
+            properties.put(org.hibernate.ejb.AvailableSettings.INTERCEPTOR, TimingInterceptor.class.getName());
+
+            return Persistence.createEntityManagerFactory("Demo", properties);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Failed to create EntityManagerFactory", e);
+            throw e;
         }
-
-        properties.put(org.hibernate.ejb.AvailableSettings.INTERCEPTOR, TimingInterceptor.class.getName());
-        
-        return Persistence.createEntityManagerFactory("Demo", properties);
     }
 
     public static EntityManagerFactory newFactory() {
