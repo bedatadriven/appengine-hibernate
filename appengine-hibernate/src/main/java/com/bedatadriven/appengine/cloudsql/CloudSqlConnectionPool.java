@@ -43,6 +43,8 @@ public class CloudSqlConnectionPool {
      */
     private final ThreadLocal<CloudSqlConnection> requestConnection = new ThreadLocal<>();
     
+    private boolean poolingEnabled = false;
+    
     
     private CloudSqlConnectionPool() {
         
@@ -67,17 +69,19 @@ public class CloudSqlConnectionPool {
         Stopwatch stopwatch = Stopwatch.createStarted();
         while(stopwatch.elapsed(TimeUnit.MILLISECONDS) < MAX_WAIT_MILLISECONDS) {
 
-            // Try to reuse an existing connection
-            IdlingConnection connection = idle.poll();
-            if (connection != null) {
-                if (connection.getIdleSeconds() > MAX_IDLE_SECONDS) {
-                    evict(connection);
-                    
-                } else if(tryActivate(connection)) {    
-                    LOGGER.fine("Leased idle connection " + connection.getConnection().getConnectionId() +
-                            " from pool. Idle count = " + idle.size() + ", " +
-                            "open connection count = " + openConnections.get());
-                    return connection.getConnection();
+            // Try to reuse an existing connection if pooling is enabled
+            if(poolingEnabled) {
+                IdlingConnection connection = idle.poll();
+                if (connection != null) {
+                    if (connection.getIdleSeconds() > MAX_IDLE_SECONDS) {
+                        evict(connection);
+
+                    } else if (tryActivate(connection)) {
+                        LOGGER.fine("Leased idle connection " + connection.getConnection().getConnectionId() +
+                                " from pool. Idle count = " + idle.size() + ", " +
+                                "open connection count = " + openConnections.get());
+                        return connection.getConnection();
+                    }
                 }
             }
 
@@ -107,8 +111,8 @@ public class CloudSqlConnectionPool {
 
         requestConnection.set(null);
 
-        if (connection.timedOut()) {
-            LOGGER.info("Disposing of connection that had time out");
+        if (!poolingEnabled) {
+            LOGGER.fine("Closing connection...");
             openConnections.decrementAndGet();
             terminate(connection);
             
