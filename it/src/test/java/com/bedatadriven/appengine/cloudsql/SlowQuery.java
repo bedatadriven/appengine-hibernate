@@ -21,7 +21,7 @@ public class SlowQuery implements Runnable {
                     .get();
 
             if (response.getStatus() != 200 && response.getStatus() != 503) {
-                RequestSubmitter.FAILURES.inc();
+                RequestSubmitter.FAILURES.mark();
             }
             try {
                 Thread.sleep(200);

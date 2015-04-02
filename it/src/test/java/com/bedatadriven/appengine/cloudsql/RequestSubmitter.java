@@ -1,9 +1,6 @@
 package com.bedatadriven.appengine.cloudsql;
 
-import com.codahale.metrics.Counter;
-import com.codahale.metrics.Histogram;
-import com.codahale.metrics.SlidingTimeWindowReservoir;
-import com.codahale.metrics.Timer;
+import com.codahale.metrics.*;
 import com.google.common.base.Stopwatch;
 import com.google.common.io.ByteStreams;
 
@@ -18,7 +15,7 @@ import java.util.concurrent.*;
  */
 public class RequestSubmitter implements Runnable {
 
-    public static final Counter FAILURES = Metrics.REGISTRY.counter("failed");
+    public static final Meter FAILURES = Metrics.REGISTRY.meter("failed");
     public static final Counter PENDING_REQUESTS = Metrics.REGISTRY.counter("pending");
     
     public static final Histogram CONNECTION_COUNT = Metrics.REGISTRY.register("connections",
@@ -113,13 +110,13 @@ public class RequestSubmitter implements Runnable {
 
                 } catch (Exception e) {
                     ErrorLog.log(e);
-                    FAILURES.inc();
+                    FAILURES.mark();
                     return false;
                 }
 
                 if (response.getStatus() != 200) {
                     ErrorLog.log(response.getStatusInfo());
-                    FAILURES.inc();
+                    FAILURES.mark();
                     return false;
                 }
                 

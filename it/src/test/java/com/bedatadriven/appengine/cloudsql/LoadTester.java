@@ -12,7 +12,8 @@ import java.util.concurrent.TimeUnit;
 
 public class LoadTester {
 
-    
+
+    public static final double MAX_FAILURES_PER_MINUTE = 5;
     
     private final ExecutorService executor;
     private final MetricRegistry metrics = new MetricRegistry();
@@ -40,12 +41,22 @@ public class LoadTester {
             
             Thread.sleep(500);
             
+            double failuresOneMinute = RequestSubmitter.FAILURES.getOneMinuteRate() * 60d;
+            
             ConsoleStatus.updateProgress()
-                    .stat("Cnxs: %3.0f", RequestSubmitter.CONNECTION_COUNT.getSnapshot().getMean())
                     .stat("Pending: %4d", RequestSubmitter.PENDING_REQUESTS.getCount())
-                    .stat("Failures: %4d", RequestSubmitter.FAILURES.getCount())
+                    .stat("Failures (1min): %3.1f", failuresOneMinute)
                     .timingHistogram("Txn", RequestSubmitter.TRANSACTION_TIME)
                     .timingHistogram("Roundtrip", RequestSubmitter.REQUEST_TIMER);
+            
+            
+            if(failuresOneMinute > MAX_FAILURES_PER_MINUTE) {
+                ConsoleStatus.failed();
+                System.err.printf("Request failure rate exceeded %2.0f/min:\n", MAX_FAILURES_PER_MINUTE);
+                System.err.printf("  One-minute rate: %2.1f/min\n", failuresOneMinute);
+                System.err.printf("  Total count    : %d\n", RequestSubmitter.FAILURES.getCount());
+                System.exit(-1);
+            }
             
             if(RequestSubmitter.FAILURES.getCount() > 5) {
                 System.out.println();
@@ -55,6 +66,7 @@ public class LoadTester {
 
         System.out.println();
 
+        
         return true;
     }
 
