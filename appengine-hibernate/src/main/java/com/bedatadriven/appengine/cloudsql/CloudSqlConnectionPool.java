@@ -29,8 +29,10 @@ public class CloudSqlConnectionPool {
     
     private static final int MAX_WAIT_MILLISECONDS = 1500;
     
-    
-    
+    private static final boolean POOLING_ENABLED =
+            !System.getenv("com.bedatadriven.appengine.cloudsql.pool").equals("false");
+
+
     private ConnectionFactory factory;
     private final ConcurrentLinkedQueue<IdlingConnection> idle = new ConcurrentLinkedQueue<>();
     
