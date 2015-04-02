@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>hibernate.connection.provider_class
 
 <persistence
     xmlns="http://java.sun.com/xml/ns/persistence"
@@ -11,9 +11,18 @@
     <class>com.bedatadriven.appengine.cloudsql.Author</class>
 
     <properties>
+      <property name="javax.persistence.validation.mode" value="none"/>
       <property name="javax.persistence.jdbc.user" value="root" />
-      <property name="hibernate.show_sql" value="true" />
+      
+      <property name="hibernate.connection.provider_class" value="com.bedatadriven.appengine.cloudsql.CloudSqlConnectionProvider"/>
       <property name="hibernate.dialect" value="org.hibernate.dialect.MySQL5InnoDBDialect"/>
+      <property name="hibernate.validator.apply_to_ddl" value="false"/>
+      <property name="hibernate.validator.autoregister_listeners" value="false"/>
+      <property name="hibernate.bytecode.use_reflection_optimizer" value="false"/>
+      
+      <!-- Debugging for this test app only -->
+      <property name="hibernate.show_sql" value="true" />
+      <property name="hibernate.ejb.interceptor" value="com.bedatadriven.appengine.cloudsql.TimingInterceptor"/>
     </properties>
 
   </persistence-unit>
