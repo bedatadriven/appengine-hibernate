@@ -1,18 +1,16 @@
 package com.bedatadriven.appengine.cloudsql;
 
 
-import com.google.appengine.api.modules.ModulesService;
-import com.google.appengine.api.modules.ModulesServiceFactory;
 import org.hibernate.annotations.QueryHints;
 
-import javax.persistence.EntityManager;
-import javax.persistence.NoResultException;
-import javax.persistence.Tuple;
+import javax.persistence.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
@@ -34,14 +32,40 @@ public class TestResources {
         em.getTransaction().commit();
         return Response.ok().build();
     }
+    
+    @GET
+    @Path("exception")
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response testException() {
+
+        EntityManager em = Hibernate.createEntityManager();
+        try {
+            em.getTransaction().begin();
+            em.createNativeQuery("select a from non_existant_table").getResultList();
+            em.getTransaction().commit();
+            return Response
+                    .status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Expected exception").build();
+            
+        } catch (Exception e) {
+            StringWriter writer = new StringWriter();
+            PrintWriter printWriter = new PrintWriter(writer);
+            e.printStackTrace(printWriter);
+            printWriter.flush();
+            
+            if(e instanceof PersistenceException) {
+                return Response.ok(writer.toString()).build();
+            } else {
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(writer.toString()).build();
+            }
+        }
+    }
 
     @POST
     @Path("greeting")
     @Produces(MediaType.TEXT_PLAIN)
     public Response createGreeting(@FormParam("author") String authorName, @FormParam("content") String content) {
 
-        LOGGER.fine("Hit endpoint");
-        
         EntityManager em = Hibernate.createEntityManager();
 
         em.getTransaction().begin();
@@ -59,12 +83,7 @@ public class TestResources {
         
         em.persist(new Greeting(author, new Date(), content));
 
-        // now list the most recent posts
-        
-        
-        
-        
-        
+        em.getTransaction().commit();
         em.close();
         
         return RequestStats.wrap(Response.ok());
@@ -84,25 +103,30 @@ public class TestResources {
         
         return RequestStats.wrap(Response.ok(toString(greetings)));
     }
-//
-//    @GET
-//    @Path("query")
-//    @Produces(MediaType.TEXT_PLAIN)
-//    public Response queryLatest
 
+    
     @GET
     @Path("greetings/latest")
     @Produces(MediaType.TEXT_PLAIN)
     public Response queryLatestGreetings(@QueryParam("maxResults") int maxResults) {
+
         EntityManager em = Hibernate.createEntityManager();
-        final List<Tuple> greetings = em
-                .createQuery("SELECT g.id, g.date, g.author.name, g.content FROM Greeting g ORDER by g.date DESC", Tuple.class)
-                .setHint(QueryHints.READ_ONLY, "true")
-                .setMaxResults(maxResults == 0 ? 500 : maxResults)
-                .getResultList();
-        
-        em.close();
-        return RequestStats.wrap(Response.ok(toString(greetings)));
+        try {
+            final List<Tuple> greetings = em
+                    .createQuery("SELECT g.id, g.date, g.author.name, g.content FROM Greeting g ORDER by g.date DESC", Tuple.class)
+                    .setHint(QueryHints.READ_ONLY, "true")
+                    .setMaxResults(maxResults == 0 ? 500 : maxResults)
+                    .getResultList();
+            em.close();
+
+
+            return RequestStats.wrap(Response.ok(toString(greetings)));
+            
+        } catch (QueryTimeoutException e) {
+            LOGGER.severe("Caught QueryTimeoutException");
+            
+            return Response.status(Response.Status.SERVICE_UNAVAILABLE).build();
+        }
     }
     
     @GET

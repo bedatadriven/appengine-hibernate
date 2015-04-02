@@ -28,6 +28,7 @@ public class LoadIT {
         
         resetDatabase();
         warmUp();
+        exceptionTest();
         writeTest();
         slowQueryTest();
         
@@ -57,31 +58,39 @@ public class LoadIT {
         }
         ConsoleStatus.finish();
     }
+    
+    public void exceptionTest() {
+        ConsoleStatus.start("Exception reporting");
+        
+        Response response = root.path("exception").request().get();
+        ConsoleStatus.finish(Integer.toString(response.getStatus()));
+
+        if(response.getStatus() != 200) {
+            System.err.println(response.readEntity(String.class));
+            System.exit(-1);
+        }
+    }
 
     
     private void writeTest() throws InterruptedException {
-        System.out.println("WRITE TEST");
-        System.out.println("==========");
-
-        LoadTester tester = new LoadTester();
+        LoadTester tester = new LoadTester("Write Test");
         tester.add(new WriteRequest(root), LogisticGrowthFunction.rampUpTo(300).during(Period.minutes(4)));
         tester.run(10, TimeUnit.MINUTES);
         tester.stop();
     }
     
     private void slowQueryTest() throws InterruptedException {
-        System.out.println("SLOW QUERY TEST");
-        System.out.println("==========");
-
-        LoadTester tester = new LoadTester();
-        tester.add(new WriteRequest(root), LogisticGrowthFunction.rampUpTo(150).during(Period.minutes(3)));
-        tester.add(new SlowQuery(root), new ConstantRate(3));
+        LoadTester tester = new LoadTester("Slow Query Test");
+        tester.add(new WriteRequest(root), LogisticGrowthFunction.rampUpTo(400).during(Period.minutes(4)));
+        
+        for(int i=1;i<10;++i) {
+            tester.add(new SlowQuery(root));
+        }
         tester.run(6, TimeUnit.MINUTES);
         tester.stop();
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        
         LoadIT integrationTest = new LoadIT();
         integrationTest.run();
       

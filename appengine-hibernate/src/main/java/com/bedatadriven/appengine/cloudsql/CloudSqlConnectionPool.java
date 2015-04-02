@@ -1,10 +1,6 @@
 package com.bedatadriven.appengine.cloudsql;
 
 
-import com.google.appengine.api.taskqueue.DeferredTask;
-import com.google.appengine.api.taskqueue.QueueFactory;
-import com.google.appengine.api.taskqueue.TaskHandle;
-import com.google.appengine.api.taskqueue.TaskOptions;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import org.hibernate.HibernateException;
@@ -16,11 +12,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class ConnectionPool {
+public class CloudSqlConnectionPool {
     
-    public static final ConnectionPool INSTANCE = new ConnectionPool();
+    public static final CloudSqlConnectionPool INSTANCE = new CloudSqlConnectionPool();
     
-    private static final Logger LOGGER = Logger.getLogger(ConnectionPool.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(CloudSqlConnectionPool.class.getName());
 
     /**
      * When App Engine instances talk to Google Cloud SQL, each App Engine instance cannot have more
@@ -45,7 +41,8 @@ public class ConnectionPool {
      */
     private final ThreadLocal<CloudSqlConnection> requestConnection = new ThreadLocal<>();
     
-    private ConnectionPool() {
+    
+    private CloudSqlConnectionPool() {
         
     }
     
@@ -103,7 +100,7 @@ public class ConnectionPool {
 
     public void release(CloudSqlConnection connection) {
         if (requestConnection.get() != connection) {
-            throw new IllegalStateException("Connec tion does not belong to the current request!");
+            throw new IllegalStateException("Connection does not belong to the current request!");
         }
 
         requestConnection.set(null);
@@ -120,8 +117,13 @@ public class ConnectionPool {
     }
 
     private void terminate(CloudSqlConnection connection) {
-        QueueFactory.getDefaultQueue()
-                .add(TaskOptions.Builder.withPayload(new KillConnectionTask(factory, connection)));
+        try {
+            connection.close();
+            LOGGER.info("Successfully closed connection " +  connection.getConnectionId());
+
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to close connection with timed-out query", e);
+        }
     }
 
     private CloudSqlConnection tryCreate() {

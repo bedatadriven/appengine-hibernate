@@ -1,8 +1,5 @@
 package com.bedatadriven.appengine.cloudsql;
 
-import com.google.appengine.api.taskqueue.Queue;
-import com.google.appengine.api.taskqueue.QueueFactory;
-
 import java.lang.reflect.Proxy;
 import java.sql.*;
 import java.util.Map;

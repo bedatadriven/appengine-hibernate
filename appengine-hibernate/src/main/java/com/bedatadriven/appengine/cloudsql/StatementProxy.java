@@ -34,7 +34,6 @@ public class StatementProxy implements InvocationHandler {
 
                 @Override
                 public Object call() throws Exception {
-                    LOGGER.fine("Invoking " + method.getName() + "()");
                     return method.invoke(delegate, args);
                 }
             });

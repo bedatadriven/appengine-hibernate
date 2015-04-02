@@ -3,7 +3,7 @@ package com.bedatadriven.appengine.cloudsql;
 import java.util.concurrent.TimeUnit;
 
 
-public class IdlingConnection {
+class IdlingConnection {
     private CloudSqlConnection connection;
     private long idleStart;
 

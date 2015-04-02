@@ -7,7 +7,6 @@ import javax.persistence.PersistenceException;
 import javax.servlet.*;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.sql.SQLTimeoutException;
 import java.util.logging.Logger;
 
 /**
@@ -40,7 +39,7 @@ public class CloudSqlFilter implements Filter {
             throw e;
             
         } finally {
-            ConnectionPool.INSTANCE.cleanupRequest();
+            CloudSqlConnectionPool.INSTANCE.cleanupRequest();
         }
     }
     

@@ -21,7 +21,7 @@ public class KillConnectionServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        CloudSqlConnection cloudSqlConnection = ConnectionPool.INSTANCE.get();
+        CloudSqlConnection cloudSqlConnection = CloudSqlConnectionPool.INSTANCE.get();
         try {
             try (Statement statement = cloudSqlConnection.createStatement()) {
                 List<Long> toKill = new ArrayList<>();
@@ -49,7 +49,7 @@ public class KillConnectionServlet extends HttpServlet {
             LOGGER.log(Level.SEVERE, "SQL Exception while killing zombie processes", e);
         } finally {
             try {
-                ConnectionPool.INSTANCE.release(cloudSqlConnection);
+                CloudSqlConnectionPool.INSTANCE.release(cloudSqlConnection);
             } catch (Exception e) {
                 LOGGER.log(Level.WARNING, "Failed to release connection", e);
             }

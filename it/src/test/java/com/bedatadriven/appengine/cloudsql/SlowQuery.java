@@ -1,29 +1,35 @@
 package com.bedatadriven.appengine.cloudsql;
 
-import com.google.common.collect.UnmodifiableIterator;
-
-import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
-import java.util.Iterator;
+import javax.ws.rs.core.Response;
 
 
-public class SlowQuery extends UnmodifiableIterator<Invocation> {
+public class SlowQuery implements Runnable {
     private WebTarget root;
 
     public SlowQuery(WebTarget root) {
         this.root = root;
     }
-
+    
     @Override
-    public boolean hasNext() {
-        return true;
-    }
+    public void run() {
+        while(true) {
+            Response response = root
+                    .path("greetings/latest")
+                    .queryParam("maxResults", 50000)
+                    .request()
+                    .get();
 
-    @Override
-    public Invocation next() {
-        return root
-                .queryParam("maxResults", 50000)
-                .request()
-                .buildGet();
+            if (response.getStatus() != 200 && response.getStatus() != 503) {
+                System.out.println("Slow query brought VM down.");
+                System.exit(-1);
+            }
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                System.out.println("SlowQuery interrupted, stopping.");
+                return;
+            }
+        }
     }
 }

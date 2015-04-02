@@ -39,6 +39,10 @@ public class Hibernate {
             properties.put("javax.persistence.jdbc.url", System.getProperty("cloudsql.url.dev"));
         }
 
+        properties.put("hibernate.validator.apply_to_ddl", "false");
+        properties.put("javax.persistence.validation.mode", "none");
+        properties.put("hibernate.validator.autoregister_listeners", "false");
+        properties.put("hibernate.bytecode.use_reflection_optimizer", "false");
 
         /*
          * Configure Hibernate to use the CloudSql connection provider

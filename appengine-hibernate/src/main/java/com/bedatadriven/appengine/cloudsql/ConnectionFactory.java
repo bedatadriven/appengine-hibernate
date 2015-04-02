@@ -7,6 +7,7 @@ import org.hibernate.internal.util.config.ConfigurationHelper;
 import org.hibernate.service.jdbc.connections.internal.ConnectionProviderInitiator;
 
 import java.io.Serializable;
+import java.security.AlgorithmParameterGenerator;
 import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.SQLException;
@@ -42,9 +43,6 @@ public class ConnectionFactory implements Serializable {
 
         LOGGER.info("Configuring CloudSql Connection Provider");
 
-
-      
-
         autocommit = ConfigurationHelper.getBoolean(AvailableSettings.AUTOCOMMIT, configurationValues);
         LOGGER.fine("Autocommit: " + (autocommit ? "ENABLED" : "DISABLED"));
 
@@ -60,6 +58,7 @@ public class ConnectionFactory implements Serializable {
         LOGGER.info("Using connection URL " + url);
 
         connectionProps = ConnectionProviderInitiator.getConnectionProperties(configurationValues);
+        
     }
     
     private Driver getDriver() {
@@ -100,7 +99,7 @@ public class ConnectionFactory implements Serializable {
     
     public Connection create() throws SQLException {
 
-        Connection conn = getDriver().connect( url, connectionProps);
+        Connection conn = getDriver().connect(url, connectionProps);
         LOGGER.fine(String.format("Created connection to: %s, Isolation Level: %s",
                 url, conn.getTransactionIsolation()));
 
@@ -115,7 +114,9 @@ public class ConnectionFactory implements Serializable {
         if (conn.getAutoCommit() != autocommit) {
             conn.setAutoCommit(autocommit);
         }
-        
+        for (String property : conn.getClientInfo().stringPropertyNames()) {
+            LOGGER.fine(property + " = " + conn.getClientInfo().getProperty(property));
+        }
         return conn;
     }
 }

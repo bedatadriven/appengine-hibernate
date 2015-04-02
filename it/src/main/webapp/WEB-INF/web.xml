@@ -12,7 +12,7 @@
     <filter-name>CloudSqlFilter</filter-name>
     <url-pattern>/*</url-pattern>
   </filter-mapping>
-
+  
   <servlet>
     <servlet-name>TestApplication</servlet-name>
     <servlet-class>org.glassfish.jersey.servlet.ServletContainer</servlet-class>

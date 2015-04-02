@@ -4,6 +4,8 @@ package com.bedatadriven.appengine.cloudsql;
 import com.google.appengine.api.ThreadManager;
 import com.google.apphosting.api.ApiProxy;
 
+import java.lang.reflect.InvocationTargetException;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.SQLTimeoutException;
 import java.sql.Statement;
@@ -23,14 +25,18 @@ public class QueryExecutor {
      * enough time to actually do something with the results, or, in the event of a timeout,
      * clean up the connection.
      */
-    public static final long QUERY_BUFFER = 10_000;
+    public static final long QUERY_BUFFER = 20_000;
     
     private static final Logger LOGGER = Logger.getLogger(QueryExecutor.class.getName());
-    
+
     private boolean timedOut = false;
     
     private ExecutorService executorService = null;
-    
+
+    public QueryExecutor() {
+    }
+
+
     public <T> T executeWithTimeout(Callable<T> action) throws SQLException {
         if(executorService == null) {
             executorService = Executors.newSingleThreadExecutor(ThreadManager.currentRequestThreadFactory());
@@ -74,12 +80,17 @@ public class QueryExecutor {
             throw new SQLTimeoutException("Interrupted", e);
 
         } catch (ExecutionException e) {
-            if (e.getCause() instanceof SQLException) {
-                throw (SQLException) e.getCause();
-            } else if (e.getCause() instanceof RuntimeException) {
-                throw (RuntimeException) e.getCause();
+            
+            Throwable rootCause = e.getCause();
+            if(rootCause instanceof InvocationTargetException) {
+                rootCause = rootCause.getCause();
+            }
+            if(rootCause instanceof SQLException) {
+                throw (SQLException) rootCause;
+            } else if(rootCause instanceof RuntimeException) {
+                throw (RuntimeException) rootCause;
             } else {
-                throw new RuntimeException(e.getCause());
+                throw new RuntimeException(e.getMessage(), e);
             }
         }
 
@@ -104,6 +115,7 @@ public class QueryExecutor {
             throw e;
         }
     }
+
 
     public void shutdown() {
         if(executorService != null) {

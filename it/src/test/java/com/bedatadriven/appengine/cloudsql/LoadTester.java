@@ -16,9 +16,15 @@ public class LoadTester {
     
     private final ExecutorService executor;
     private final MetricRegistry metrics = new MetricRegistry();
-    
-    public LoadTester() {
+    private final String testName;
+
+    public LoadTester(String testName) {
         this.executor = Executors.newCachedThreadPool();
+        this.testName = testName;
+    }
+    
+    public void add(Runnable runnable) {
+        executor.submit(runnable);
     }
     
     public void add(Iterator<Invocation> request, LoadFunction loadFunction) {
@@ -27,7 +33,7 @@ public class LoadTester {
 
     public boolean run(long duration, TimeUnit unit) throws InterruptedException {
 
-        ConsoleStatus.start("Running");
+        ConsoleStatus.start(testName);
         
         Stopwatch stopwatch = Stopwatch.createStarted();
         while(stopwatch.elapsed(unit) < duration) {
@@ -40,11 +46,11 @@ public class LoadTester {
                     .stat("Failures: %4d", RequestSubmitter.FAILURES.getCount())
                     .timingHistogram("Txn", RequestSubmitter.TRANSACTION_TIME)
                     .timingHistogram("Roundtrip", RequestSubmitter.REQUEST_TIMER);
-//            
-//            if(RequestSubmitter.FAILURES.getCount() > 5) {
-//                System.out.println();
-//                return false;
-//            }
+            
+            if(RequestSubmitter.FAILURES.getCount() > 5) {
+                System.out.println();
+                return false;
+            }
         }
 
         System.out.println();

@@ -8,6 +8,7 @@
   <system-properties>
     <property name="java.util.logging.config.file" value="WEB-INF/logging.properties"/>
     <property name="cloudsql.url" value="jdbc:google:mysql://ai-capacity-test:activityinfo/hibernate?user=root"/>
+    <property name="cloudsql.url.dev" value="jdbc:mysql://localhost/hibernate?user=root&amp;password=root"/>
   </system-properties>
 
   <threadsafe>true</threadsafe>

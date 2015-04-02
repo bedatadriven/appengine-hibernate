@@ -36,8 +36,8 @@ public class RequestSubmitter implements Runnable {
     private final LoadFunction loadFunction;
     private final Stopwatch runningTime;
 
-    public RequestSubmitter(Executor executor, 
-                            Iterator<Invocation> requestSupplier, 
+    public RequestSubmitter(Executor executor,
+                            Iterator<Invocation> requestSupplier,
                             LoadFunction loadFunction) {
         this.requests = requestSupplier;
         this.executor = executor;
@@ -74,12 +74,13 @@ public class RequestSubmitter implements Runnable {
                     boolean succeeded = ecs.take().get();
                     pending--;
 
+                    // clear out all finished requests
                     while(ecs.poll() != null) {
                         pending --;
                     }
                 } else {
                     // wait for our concurrency factor to be increased...
-                    Thread.sleep(500);
+                    Thread.sleep(200);
                 }
             }
         } catch (InterruptedException ignored) {
@@ -128,29 +129,29 @@ public class RequestSubmitter implements Runnable {
                 
                 long latency = time.stop();
 
-                long connectionTime = Long.parseLong(response.getHeaderString(RequestStats.CONNECT_TIME_HEADER));
-                
-                long transactionTime = Long.parseLong(response.getHeaderString(RequestStats.TRANSACT_TIME_HEADER));
+                long transactionTime = getLong(response, RequestStats.TRANSACT_TIME_HEADER);
                 if(transactionTime != 0) {
                     TRANSACTION_TIME.update(transactionTime, TimeUnit.NANOSECONDS);
                 }
                 
-                long connectionCount = Long.parseLong(response.getHeaderString(RequestStats.CONNECTION_COUNT_HEADER));
-                if(connectionCount != 0) {
-                    CONNECTION_COUNT.update(connectionCount);
-                }
-
-                ErrorLog.requestLog.println(String.format("%d,%s,%d,%d,%d",
+                ErrorLog.requestLog.println(String.format("%d,%s,%d,%d",
                         System.currentTimeMillis(),
                         response.getHeaderString(RequestStats.REQUEST_ID_HEADER),
                         PENDING_REQUESTS.getCount(),
-                        TimeUnit.NANOSECONDS.toMillis(latency),
-                        connectionCount));
+                        TimeUnit.NANOSECONDS.toMillis(latency)));
                 
                 return true;
                 
             } finally {
                 PENDING_REQUESTS.dec();
+            }
+        }
+
+        private long getLong(Response response, String header) {
+            try {
+                return Long.parseLong(response.getHeaderString(header));
+            } catch (NumberFormatException e) {
+                return 0;
             }
         }
     }
