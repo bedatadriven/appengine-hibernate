@@ -1,23 +1,21 @@
 package com.bedatadriven.appengine.cloudsql;
 
 
-import com.google.appengine.api.LifecycleManager;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import org.hibernate.HibernateException;
 
 import java.sql.SQLException;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.sql.SQLTimeoutException;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class CloudSqlConnectionPool {
-    
+
     public static final CloudSqlConnectionPool INSTANCE = new CloudSqlConnectionPool();
-    
+
     private static final Logger LOGGER = Logger.getLogger(CloudSqlConnectionPool.class.getName());
 
     /**
@@ -25,83 +23,78 @@ public class CloudSqlConnectionPool {
      * than 12 concurrent connections to a Cloud SQL instance.
      * https://cloud.google.com/appengine/docs/java/cloud-sql/#Java_Size_and_access_limits
      */
-    private static final int MAX_CONNECTIONS = 12;
+    public static final int MAX_CONNECTIONS = 12;
     
-    private static final int MAX_IDLE_SECONDS = 10;
-    
-    private static final int MAX_WAIT_MILLISECONDS = 1500;
+    public static final int MAX_IDLE_SECONDS = 10;
 
     private ConnectionFactory factory;
-    private final ConcurrentLinkedQueue<IdlingConnection> idle = new ConcurrentLinkedQueue<>();
     
-    private final AtomicInteger openConnections = new AtomicInteger(0);
-    
-    private final AtomicBoolean shutdownHookRegistered = new AtomicBoolean(false);
+    private final Semaphore connections = new Semaphore(MAX_CONNECTIONS, true);
+
 
     /**
      * Ensure that a single connection is allocated per request.
      */
     private final ThreadLocal<CloudSqlConnection> requestConnection = new ThreadLocal<>();
-    
-    private boolean poolingEnabled = false;
-    
-    
+
+
     private CloudSqlConnectionPool() {
-        
+
     }
-    
+
     public void setFactory(ConnectionFactory connectionFactory) {
         this.factory = connectionFactory;
     }
-    
-    public CloudSqlConnection get() {
+
+    public CloudSqlConnection get() throws SQLTimeoutException {
         Preconditions.checkState(factory != null, "Connection factory has not been set.");
         Preconditions.checkState(requestConnection.get() == null, "There is already an open connection for this request");
 
         CloudSqlConnection connection = lease();
-        
+
         requestConnection.set(connection);
-        
+
         return connection;
     }
 
-    private CloudSqlConnection lease() {
+    private CloudSqlConnection lease() throws SQLTimeoutException {
         Stopwatch stopwatch = Stopwatch.createStarted();
-        while(stopwatch.elapsed(TimeUnit.MILLISECONDS) < MAX_WAIT_MILLISECONDS) {
 
-            // Try to reuse an existing connection if pooling is enabled
-            if(poolingEnabled) {
-                IdlingConnection connection = idle.poll();
-                if (connection != null) {
-                    if (connection.getIdleSeconds() > MAX_IDLE_SECONDS) {
-                        evict(connection);
-
-                    } else if (tryActivate(connection)) {
-                        LOGGER.fine("Leased idle connection " + connection.getConnection().getConnectionId() +
-                                " from pool. Idle count = " + idle.size() + ", " +
-                                "open connection count = " + openConnections.get());
-                        return connection.getConnection();
-                    }
-                }
-            }
-
-            // If that's not possible, create a new connection if we haven't 
-            // reached our limit
-            if(openConnections.get() < MAX_CONNECTIONS) {
-                CloudSqlConnection newConnection = tryCreate();
-                if(newConnection != null) {
-                    LOGGER.fine("Leased new connection. Idle count = " + idle.size() + ", " +
-                            "open connection count = " + openConnections.get());
-                    return newConnection;
-                }
-            }
-            try {
-                Thread.sleep(250);
-            } catch (InterruptedException e) {
-                throw new HibernateException("Interrupted while waiting to try again for a connection");
-            }
+        long queueLength = connections.getQueueLength();
+        if(queueLength > 0) {
+            LOGGER.warning("Approximately " + queueLength + " request(s) waiting for a connection");
         }
-        throw new HibernateException("Timed out while trying to connect");
+        
+        try {
+            if(!connections.tryAcquire(10, TimeUnit.SECONDS)) {
+                throw new SQLTimeoutException("Timed out while waiting for a connection");
+            }
+
+        } catch (InterruptedException e) {
+            throw new SQLTimeoutException("Interrupted while waiting for a connection");
+        }
+
+        long waitTime = stopwatch.elapsed(TimeUnit.MILLISECONDS);
+        if(waitTime > 500) {
+            LOGGER.warning("Waited " + waitTime + " ms for a connection");
+        }
+
+        
+
+        // If that's not possible or enabled, create a new connection
+        try {
+            CloudSqlConnection newConnection = create();
+
+            LOGGER.fine("Leased new connection. Connections remaining: " + connections.availablePermits());
+
+            return newConnection;
+            
+            
+        } catch (Exception e) {
+            connections.release();
+            throw new HibernateException("Could not open a new connection ", e);
+        }
+
     }
 
     public void release(CloudSqlConnection connection) {
@@ -111,29 +104,11 @@ public class CloudSqlConnectionPool {
 
         requestConnection.set(null);
 
-        if (!poolingEnabled) {
-            LOGGER.fine("Closing connection...");
-            openConnections.decrementAndGet();
-            terminate(connection);
-            
-        } else {
-            connection.shutdownExecutor();
-            idle.add(new IdlingConnection(connection));
-            ensureShutdownHookRegistered();
-        }
+        LOGGER.fine("Closing connection...");
+        connections.release();
+        terminate(connection);
     }
 
-    private void ensureShutdownHookRegistered() {
-        if(shutdownHookRegistered.compareAndSet(false, true)) {
-            LifecycleManager.getInstance().setShutdownHook(new LifecycleManager.ShutdownHook() {
-                @Override
-                public void shutdown() {
-                    LOGGER.severe("Shutting down: closing all idle connections...");
-                    stop();
-                }
-            });
-        }
-    }
 
     private void terminate(CloudSqlConnection connection) {
         try {
@@ -145,51 +120,22 @@ public class CloudSqlConnectionPool {
         }
     }
 
-    private CloudSqlConnection tryCreate() {
+    private CloudSqlConnection create() throws SQLException {
+        CloudSqlConnection connection = new CloudSqlConnection(factory.create());
         try {
-            CloudSqlConnection connection = new CloudSqlConnection(factory.create());
+            connection.initConnectionId();
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Failed to initialize connection", e);
             try {
-                connection.initConnectionId();
-            } catch (Exception e) {
-                LOGGER.log(Level.SEVERE, "Failed to initialize connection", e);
-                try {
-                    connection.close();
-                } catch (Exception closingException) {
-                    LOGGER.log(Level.SEVERE, "Failed to close connection after initConnectionId() threw", e);
-                }
-                return null;
+                connection.close();
+            } catch (Exception closingException) {
+                LOGGER.log(Level.SEVERE, "Failed to close connection after initConnectionId() threw", e);
             }
-            openConnections.incrementAndGet();
-            return connection;
-            
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Failed to connect", e);
             return null;
         }
+        return connection;
     }
 
-    private boolean tryActivate(IdlingConnection connection) {
-        try {
-            factory.activate(connection.getConnection());
-            return true;
-            
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Failed to activate idling connection", e);
-            openConnections.decrementAndGet();
-            return false;
-        }
-    }
-
-    private void evict(IdlingConnection connection) {
-        try {
-            connection.getConnection().close();
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Failed to close idled connection", e);
-        }
-        
-        openConnections.decrementAndGet();
-    }
-    
     public void cleanupRequest() {
         CloudSqlConnection connection = requestConnection.get();
         if(connection != null) {
@@ -199,9 +145,6 @@ public class CloudSqlConnectionPool {
     }
 
     public void stop() {
-        IdlingConnection connection;
-        while((connection=idle.poll())!=null) {
-            evict(connection);
-        }
+     
     }
 }
