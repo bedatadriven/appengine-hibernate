@@ -42,7 +42,7 @@ public class QueryExecutor {
             executorService = Executors.newSingleThreadExecutor(ThreadManager.currentRequestThreadFactory());
         }
 
-        long timeRemainingMillis = ApiProxy.getCurrentEnvironment().getRemainingMillis();
+        long timeRemainingMillis = RequestTimer.getCurrent().getRemainingMillis();
         long timeLimit = timeRemainingMillis - QUERY_BUFFER;
         long startTime = System.currentTimeMillis();
 

@@ -1,10 +1,12 @@
 package com.bedatadriven.appengine.cloudsql;
 
+import com.google.common.base.Strings;
 import org.hibernate.QueryTimeoutException;
 import org.hibernate.exception.JDBCConnectionException;
 
 import javax.persistence.PersistenceException;
 import javax.servlet.*;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.logging.Logger;
@@ -26,6 +28,12 @@ public class CloudSqlFilter implements Filter {
         
         LOGGER.fine("Starting...");
         
+        if(isTaskQueueRequest(servletRequest)) {
+            RequestTimer.getCurrent().taskRequestStarted();
+        } else {
+            RequestTimer.getCurrent().frontEndRequestStarted();
+        }
+        
         try {
             filterChain.doFilter(servletRequest, servletResponse);
 
@@ -42,7 +50,16 @@ public class CloudSqlFilter implements Filter {
             CloudSqlConnectionPool.INSTANCE.cleanupRequest();
         }
     }
-    
+
+    private boolean isTaskQueueRequest(ServletRequest servletRequest) {
+        if(servletRequest instanceof HttpServletRequest) {
+            HttpServletRequest request = (HttpServletRequest) servletRequest;
+            return !Strings.isNullOrEmpty(request.getHeader("X-AppEngine-QueueName"));
+        } else {
+            return false;
+        }
+    }
+
     private boolean isDatabaseProblem(Throwable e) {
         if(e instanceof PersistenceException) {
             return e instanceof javax.persistence.QueryTimeoutException ||
