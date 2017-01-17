@@ -48,7 +48,7 @@
   </distributionManagement>
 
   <properties>
-    <appengine.target.version>1.9.17a</appengine.target.version>
+    <appengine.target.version>1.9.48</appengine.target.version>
     <guava.version>15.0</guava.version>
     <maven.compiler.target>1.7</maven.compiler.target>
     <maven.compiler.source>1.7</maven.compiler.source>

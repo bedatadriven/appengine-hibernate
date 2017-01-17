@@ -12,6 +12,7 @@
     <properties>
       <property name="javax.persistence.validation.mode" value="none"/>
       <property name="javax.persistence.jdbc.user" value="root" />
+      <property name="javax.persistence.jdbc.password" value="root" />
       
       <property name="hibernate.connection.provider_class" value="com.bedatadriven.appengine.cloudsql.CloudSqlConnectionProvider"/>
       <property name="hibernate.dialect" value="org.hibernate.dialect.MySQL5InnoDBDialect"/>

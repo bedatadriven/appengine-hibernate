@@ -27,6 +27,11 @@ thrown during CloudSQL queries. This can lead to a vicious cycle under peak load
 The `CloudSqlConnectionProvider` addresses this problem by running all queries in a seperate worker thread, and 
 cancelling the queries if the request approaches the time limit.
 
+### Tracing 
+
+AppEngine does not include Cloud SQL queries in the built-in tracing out of the box.
+This library adds cloudsql/query spans to traced requests.
+
 ### Connection Pooling
 
 Existing connection pool libraries like C3P0 are poorly suited to the AppEngine context for two reasons:

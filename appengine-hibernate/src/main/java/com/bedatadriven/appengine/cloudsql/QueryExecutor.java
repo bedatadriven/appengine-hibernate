@@ -3,6 +3,8 @@ package com.bedatadriven.appengine.cloudsql;
 
 import com.google.appengine.api.ThreadManager;
 import com.google.apphosting.api.ApiProxy;
+import com.google.cloud.trace.core.TraceContext;
+import com.google.cloud.trace.service.AppEngineTraceService;
 
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
@@ -33,6 +35,8 @@ public class QueryExecutor {
     
     private ExecutorService executorService = null;
 
+    private AppEngineTraceService traceService = new AppEngineTraceService();
+
     public QueryExecutor() {
     }
 
@@ -41,6 +45,8 @@ public class QueryExecutor {
         if(executorService == null) {
             executorService = Executors.newSingleThreadExecutor(ThreadManager.currentRequestThreadFactory());
         }
+
+        TraceContext traceContext = traceService.getTracer().startSpan("/cloudsql/query");
 
         long timeRemainingMillis = RequestTimer.getCurrent().getRemainingMillis();
         long timeLimit = timeRemainingMillis - QUERY_BUFFER;
@@ -92,6 +98,8 @@ public class QueryExecutor {
             } else {
                 throw new RuntimeException(e.getMessage(), e);
             }
+        } finally {
+            traceService.getTracer().endSpan(traceContext);
         }
 
         return result;

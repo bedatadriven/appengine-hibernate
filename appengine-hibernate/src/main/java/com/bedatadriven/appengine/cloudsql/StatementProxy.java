@@ -26,7 +26,7 @@ public class StatementProxy implements InvocationHandler {
         
         if (isQuery(method.getName())) {
             /*
-             * Invoke queries in a seperate worker thread with a timeout
+             * Invoke queries in a separate worker thread with a timeout
              */
             return executor.executeQueryWithTimeout(delegate, new Callable<Object>() {
 
