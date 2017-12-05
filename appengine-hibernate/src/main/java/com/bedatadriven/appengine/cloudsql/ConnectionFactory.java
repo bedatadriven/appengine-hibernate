@@ -11,8 +11,10 @@ import java.security.AlgorithmParameterGenerator;
 import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.SQLException;
+import java.sql.SQLRecoverableException;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -98,12 +100,41 @@ public class ConnectionFactory implements Serializable {
     
     
     public Connection create() throws SQLException {
+        Connection conn = connectWithRetries();
 
-        Connection conn = getDriver().connect(url, connectionProps);
         LOGGER.fine(String.format("Created connection to: %s, Isolation Level: %s",
-                url, conn.getTransactionIsolation()));
+            url, conn.getTransactionIsolation()));
 
         return activate(conn);
+    }
+
+    private Connection connectWithRetries() throws SQLException {
+        int attemptNumber = 0;
+        while(true) {
+            try {
+                return getDriver().connect(url, connectionProps);
+
+            } catch (SQLRecoverableException connectionException) {
+
+                if (attemptNumber > 2) {
+                    throw connectionException;
+                }
+
+                LOGGER.warning("Failed to connect to database: " + connectionException.getMessage());
+
+                try {
+                    // Backoff exponentially
+                    Thread.sleep(((int)
+                        Math.round(Math.pow(2, attemptNumber)) * 1000) +
+                            ThreadLocalRandom.current().nextInt(1, 1000));
+                } catch (InterruptedException interruptedException) {
+                    LOGGER.severe("Thread interrupted while waiting to retry.");
+                    throw connectionException;
+                }
+
+                attemptNumber++;
+            }
+        }
     }
 
     public Connection activate(Connection conn) throws SQLException {
